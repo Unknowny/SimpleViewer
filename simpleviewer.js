@@ -2,8 +2,9 @@ function SimpleViewer (tag) {
     // Private data
     var viewer = this,
         shown = true,
+        video = false,
         dropped = true, // drag'n'drop indicator
-        originalTag, naturalSize, src;
+        naturalSize, src;
 
     // Public data
     this.tag = null;
@@ -72,18 +73,30 @@ function SimpleViewer (tag) {
     }
 
     function getNaturalSize (tag) {
-        return {width: tag.naturalWidth, height: tag.naturalHeight};
+        if (video) return {width: tag.videoWidth, height: tag.videoHeight};
+        else return {width: tag.naturalWidth, height: tag.naturalHeight};
+    }
+
+    function getSource (tag) {
+        if (video) return tag.currentSrc;
+        else return tag.src;
     }
 
     function updateTag (tag) {
-        if (!viewer.tag) constructTag(tag);
+        video = tag.tagName === 'VIDEO';
 
-        src = tag.src;
+        if (!viewer.tag) constructTag(tag);
+        else if (viewer.tag[0].tagName !== tag.tagName) {
+            viewer.tag.remove();
+            constructTag(tag);
+            if (shown) viewer.tag.show();
+        }
+
+        src = getSource(tag);
         naturalSize = getNaturalSize(tag);
-        originalTag = tag;
         var size = adjustToWindow(naturalSize.width, naturalSize.height)
 
-        viewer.tag.attr({
+        viewer.tag.prop({
             'width': size.width,
             'src': src
         });
@@ -92,8 +105,14 @@ function SimpleViewer (tag) {
     }
 
     function constructTag (tag) {
-        viewer.tag = $('<img class="viewer">');
+        viewer.tag = $(video ? '<video loop autoplay></video>' : '<img>');
+        viewer.tag.addClass('viewer');
+        viewer.tag.hide();
+        viewer.tag.appendTo(document.body);
+        setEvents();
+    }
 
+    function setEvents () {
         viewer.tag
         // resize events
         .on('wheel', function (e) {
@@ -106,6 +125,8 @@ function SimpleViewer (tag) {
         })
         // drag'n'drop events
         .on('mousedown', function (e) {
+            if (e.which !== 1) return;
+
             // offset_x, offset_y - mouse offset relative to viewer tag
             var offset_x = e.clientX - viewer.tag.position().left,
                 offset_y = e.clientY - viewer.tag.position().top;
@@ -125,24 +146,23 @@ function SimpleViewer (tag) {
             e.preventDefault();
         })
         .on('mouseup', function (e) {
+            if (e.which !== 1) return;
+
             if (!dropped) inDrag(false);
             else viewer.hide();
             // clean drag'n'drop events
             viewer.tag.off('mousemove mouseout');
         });
-
-        viewer.tag.hide();
-        viewer.tag.appendTo(document.body);
     }
 
     function resizeTag (delta) {
-        var old_h = viewer.tag[0].height,
+        var old_h = viewer.tag.height(),
             pos = viewer.tag.position();
 
         viewer.tag[0].width += delta;
 
         var x = pos.left - delta / 2,
-            y = pos.top - (viewer.tag[0].height - old_h) / 2;
+            y = pos.top - (viewer.tag.height() - old_h) / 2;
 
         moveTag(x, y);
     }
@@ -156,16 +176,15 @@ function SimpleViewer (tag) {
 
 }
 
-(function () {
-    var style = '.viewer {position: fixed; border: 1px solid rgba(0, 0, 0, .7);}' +
-                '.viewer.dragging {outline: 2px dotted rgba(0, 0, 0, 1); box-shadow: 0 0 0 2px white;}'
-    $(document.head).append('<style type="text/css">' + style + '</style>')
+// Main
+var simple_viewer = new SimpleViewer();
+$(document.head).append('<style type="text/css">' +
+                        '.viewer {position: fixed; border: 1px solid rgba(0, 0, 0, .7);}' +
+                        '.viewer.dragging {outline: 2px dotted rgba(0, 0, 0, 1); box-shadow: 0 0 0 2px white;}' +
+                        '</style>')
 
-    var viewer = new SimpleViewer();
-
-    $(document.body).on('click', '.simpleviewer', function (e) {
-        viewer.update(e.target);
-        viewer.show();
-        e.preventDefault();
-    })
-})();
+$(document.body).on('click', '.simpleviewer', function (e) {
+    simple_viewer.update(e.target);
+    simple_viewer.show();
+    e.preventDefault();
+});
