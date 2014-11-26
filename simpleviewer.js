@@ -107,8 +107,8 @@ function SimpleViewer (tag) {
         // drag'n'drop events
         .on('mousedown', function (e) {
             // offset_x, offset_y - mouse offset relative to viewer tag
-            var offset_x = e.clientX - viewer.tag.offset().left,
-                offset_y = e.clientY - viewer.tag.offset().top;
+            var offset_x = e.clientX - viewer.tag.position().left,
+                offset_y = e.clientY - viewer.tag.position().top;
 
             viewer.tag.on('mousemove', function (e) {
                 if (dropped) {
@@ -137,7 +137,7 @@ function SimpleViewer (tag) {
 
     function resizeTag (delta) {
         var old_h = viewer.tag[0].height,
-            pos = viewer.tag.offset();
+            pos = viewer.tag.position();
 
         viewer.tag[0].width += delta;
 
@@ -151,7 +151,7 @@ function SimpleViewer (tag) {
         viewer.tag.css({
             'left': x + 'px',
             'top': y + 'px'
-        })
+        });
     }
 
 }
@@ -168,4 +168,4 @@ function SimpleViewer (tag) {
         viewer.show();
         e.preventDefault();
     })
-})()
+})();
