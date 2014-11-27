@@ -184,6 +184,7 @@ $(document.head).append('<style type="text/css">' +
                         '</style>')
 
 $(document.body).on('click', '.simpleviewer', function (e) {
+    if (e.ctrlKey || e.altKey || e.shiftKey) return;
     simple_viewer.update(e.target);
     simple_viewer.show();
     e.preventDefault();
