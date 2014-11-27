@@ -4,10 +4,15 @@ function SimpleViewer (tag) {
         shown = true,
         video = false,
         dropped = true, // drag'n'drop indicator
-        naturalSize, src;
+        natural_size;
 
     // Public data
     this.tag = null;
+    this.source_tag = null;
+
+    this.shown = function () {
+        return shown;
+    }
 
     this.show = function () {
         if (shown && !viewer.tag) return;
@@ -17,6 +22,8 @@ function SimpleViewer (tag) {
             viewer.tag.appendTo(document.body);
 
         viewer.tag.show();
+        if (video) viewer.tag[0].play();
+
         shown = true;
     };
 
@@ -45,11 +52,11 @@ function SimpleViewer (tag) {
     }
 
     function adjustWidth (h) {
-        return h * naturalSize.width/naturalSize.height;
+        return h * natural_size.width/natural_size.height;
     }
 
     function adjustHeight (w) {
-        return w * naturalSize.height/naturalSize.width;
+        return w * natural_size.height/natural_size.width;
     }
 
     function adjustToWindow (w, h) {
@@ -87,18 +94,20 @@ function SimpleViewer (tag) {
     }
 
     function updateTag (tag) {
-        video = tag.tagName === 'VIDEO';
+        viewer.source_tag = tag;
 
-        if (!viewer.tag) constructTag(tag);
+        video = tag.tagName === 'VIDEO';
+        natural_size = getNaturalSize(tag);
+
+        var size = adjustToWindow(natural_size.width, natural_size.height),
+            src = getSource(tag);
+
+        if (!viewer.tag) constructTag();
         else if (viewer.tag[0].tagName !== tag.tagName) {
             viewer.tag.remove();
-            constructTag(tag);
+            constructTag();
             if (shown) viewer.tag.show();
         }
-
-        src = getSource(tag);
-        naturalSize = getNaturalSize(tag);
-        var size = adjustToWindow(naturalSize.width, naturalSize.height)
 
         viewer.tag.prop({
             'width': size.width,
@@ -108,10 +117,9 @@ function SimpleViewer (tag) {
         moveTag(size.left, size.top);
     }
 
-    function constructTag (tag) {
+    function constructTag () {
         viewer.tag = $(video ? '<video loop autoplay></video>' : '<img>');
         viewer.tag.addClass('viewer');
-        viewer.tag.hide();
         setEvents();
     }
 
@@ -159,13 +167,13 @@ function SimpleViewer (tag) {
     }
 
     function resizeTag (delta) {
-        var old_h = viewer.tag.height(),
+        var prev_h = viewer.tag.height(),
             pos = viewer.tag.position();
 
         viewer.tag[0].width += delta;
 
         var x = pos.left - delta / 2,
-            y = pos.top - (viewer.tag.height() - old_h) / 2;
+            y = pos.top - (viewer.tag.height() - prev_h) / 2;
 
         moveTag(x, y);
     }
@@ -188,7 +196,13 @@ $(document.head).append('<style type="text/css">' +
 
 $(document.body).on('click', '.simpleviewer', function (e) {
     if (e.ctrlKey || e.altKey || e.shiftKey) return;
+    e.preventDefault()
+
+    if (simple_viewer.source_tag === e.target && simple_viewer.shown()) {
+        simple_viewer.hide();
+        return;
+    }
+
     simple_viewer.update(e.target);
     simple_viewer.show();
-    e.preventDefault();
 });
