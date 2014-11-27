@@ -12,6 +12,10 @@ function SimpleViewer (tag) {
     this.show = function () {
         if (shown && !viewer.tag) return;
 
+        // if tag detached from body
+        if (!$.contains(document.documentElement, viewer.tag))
+            viewer.tag.appendTo(document.body);
+
         viewer.tag.show();
         shown = true;
     };
@@ -108,7 +112,6 @@ function SimpleViewer (tag) {
         viewer.tag = $(video ? '<video loop autoplay></video>' : '<img>');
         viewer.tag.addClass('viewer');
         viewer.tag.hide();
-        viewer.tag.appendTo(document.body);
         setEvents();
     }
 
