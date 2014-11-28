@@ -18,7 +18,7 @@ function SimpleViewer (tag) {
         if (shown && !viewer.tag) return;
 
         // if tag detached from body
-        if (!$.contains(document.documentElement, viewer.tag))
+        if (!$.contains(document.documentElement, viewer.tag[0]))
             viewer.tag.appendTo(document.body);
 
         viewer.tag.show();
