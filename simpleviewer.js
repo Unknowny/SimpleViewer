@@ -201,7 +201,7 @@ function SimpleViewer (tag, conf) {
 // Main
 var simple_viewer = new SimpleViewer();
 $(document.head).append('<style type="text/css">' +
-                        '.viewer {position:fixed; border:1px solid rgba(0, 0, 0, .7);}' +
+                        '.viewer {position:fixed; outline:1px solid rgba(0, 0, 0, .7);}' +
                         '.viewer.dragging {outline:2px dotted rgba(0, 0, 0, 1); box-shadow:0 0 0 2px white;}' +
                         '</style>');
 
