@@ -103,11 +103,10 @@ function SimpleViewer (tag) {
             src = getSource(tag);
 
         if (!viewer.tag) constructTag();
-        else if (viewer.tag[0].tagName !== tag.tagName) {
-            viewer.tag.remove();
-            constructTag();
-            if (shown) viewer.tag.show();
-        }
+
+        viewer.tag.remove();
+        constructTag();
+        if (shown) viewer.tag.show();
 
         viewer.tag.prop({
             'width': size.width,
@@ -126,44 +125,10 @@ function SimpleViewer (tag) {
     function setEvents () {
         viewer.tag
         // resize events
-        .on('wheel', function (e) {
-            var delta = 50;
-
-            if (e.originalEvent.deltaY > 0) resizeTag(-delta); // scroll down
-            else resizeTag(delta); // scroll up
-
-            e.preventDefault();
-        })
+        .on('wheel', wheelHandler)
         // drag'n'drop events
-        .on('mousedown', function (e) {
-            if (e.which !== 1) return;
-
-            // offset_x, offset_y - mouse offset relative to viewer tag
-            var offset_x = e.clientX - viewer.tag.position().left,
-                offset_y = e.clientY - viewer.tag.position().top;
-
-            viewer.tag.on('mousemove', function (e) {
-                if (dropped) {
-                    inDrag(true);
-                    viewer.tag.on('mouseout', function () {
-                        viewer.tag.trigger('mouseup');
-                    });
-                }
-
-                moveTag(e.clientX - offset_x,
-                        e.clientY - offset_y);
-            });
-
-            e.preventDefault();
-        })
-        .on('mouseup', function (e) {
-            if (e.which !== 1) return;
-
-            if (!dropped) inDrag(false);
-            else viewer.hide();
-            // clean drag'n'drop events
-            viewer.tag.off('mousemove mouseout');
-        });
+        .on('mousedown', mousedownHandler)
+        .on('mouseup', mouseupHandler);
     }
 
     function resizeTag (delta) {
@@ -183,6 +148,46 @@ function SimpleViewer (tag) {
             'left': x + 'px',
             'top': y + 'px'
         });
+    }
+
+    function wheelHandler (e) {
+        var delta = 50;
+
+        if (e.originalEvent.deltaY > 0) resizeTag(-delta); // scroll down
+        else resizeTag(delta); // scroll up
+
+        e.preventDefault();
+    }
+
+    function mousedownHandler (e) {
+            if (e.which !== 1) return;
+
+            // offset_x, offset_y - mouse offset relative to viewer tag
+            var offset_x = e.clientX - viewer.tag.position().left,
+                offset_y = e.clientY - viewer.tag.position().top;
+
+            viewer.tag.on('mousemove', function (e) {
+                if (dropped) {
+                    inDrag(true);
+                    viewer.tag.on('mouseout', function () {
+                        viewer.tag.trigger('mouseup');
+                    });
+                }
+
+                moveTag(e.clientX - offset_x,
+                        e.clientY - offset_y);
+            });
+
+            e.preventDefault();
+    }
+
+    function mouseupHandler (e) {
+        if (e.which !== 1) return;
+
+        if (!dropped) inDrag(false);
+        else viewer.hide();
+        // clear drag'n'drop events
+        viewer.tag.off('mousemove mouseout');
     }
 
 }
