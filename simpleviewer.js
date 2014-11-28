@@ -42,7 +42,7 @@ function SimpleViewer (tag, conf) {
     // Init
     if (tag) viewer.update(tag);
     if (conf) {
-        viewer.conf.margin = conf.margin * 0.01;
+        if (conf.margin) viewer.conf.margin = conf.margin * 0.01;
     }
 
     // Private methods
@@ -125,6 +125,7 @@ function SimpleViewer (tag, conf) {
     function constructTag () {
         viewer.tag = $(video ? '<video loop autoplay></video>' : '<img>');
         viewer.tag.addClass('viewer');
+        viewer.tag.prop('draggable', false);
         setEvents();
     }
 
