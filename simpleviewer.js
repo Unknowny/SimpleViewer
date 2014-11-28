@@ -1,4 +1,4 @@
-function SimpleViewer (tag) {
+function SimpleViewer (tag, conf) {
     // Private data
     var viewer = this,
         shown = true,
@@ -9,6 +9,9 @@ function SimpleViewer (tag) {
     // Public data
     this.tag = null;
     this.source_tag = null;
+    this.conf = {
+        margin: 0
+    }
 
     this.shown = function () {
         return shown;
@@ -38,6 +41,9 @@ function SimpleViewer (tag) {
 
     // Init
     if (tag) viewer.update(tag);
+    if (conf) {
+        viewer.conf.margin = conf.margin * 0.01;
+    }
 
     // Private methods
     function inDrag (state) {
@@ -64,11 +70,11 @@ function SimpleViewer (tag) {
             window_h = $(window).height();
 
         if (w > window_w) {
-            w = window_w * 0.9;
+            w = window_w - (window_w * viewer.conf.margin);
             h = adjustHeight(w);
         }
         if (h > window_h) {
-            h = window_h * 0.9;
+            h = window_h - (window_h * viewer.conf.margin);
             w = adjustWidth(h);
         }
 
@@ -197,7 +203,7 @@ var simple_viewer = new SimpleViewer();
 $(document.head).append('<style type="text/css">' +
                         '.viewer {position:fixed; border:1px solid rgba(0, 0, 0, .7);}' +
                         '.viewer.dragging {outline:2px dotted rgba(0, 0, 0, 1); box-shadow:0 0 0 2px white;}' +
-                        '</style>')
+                        '</style>');
 
 $(document.body).on('click', '.simpleviewer', function (e) {
     if (e.ctrlKey || e.altKey || e.shiftKey) return;
