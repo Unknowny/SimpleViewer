@@ -55,8 +55,11 @@ function SimpleViewer (config) {
         if (c.min_size > 0)
             conf.min_size = c.min_size;
 
-        if (c.button_html)
+        if (c.button_html !== undefined)
             conf.button_html = c.button_html;
+
+        if (c.loading_html !== undefined)
+            conf.loading_html = c.loading_html;
 
         if (typeof c.draggable === 'boolean')
             conf.draggable = c.draggable;
@@ -369,7 +372,7 @@ function simpleviewerHandler (e, src) {
 // Main
 var simpleviewer = new SimpleViewer();
 $(document.head).append('<style type="text/css">' +
-                        '.viewer {position:fixed; outline:1px solid rgba(0, 0, 0, .7);}' +
+                        '.viewer {position:fixed; outline:1px solid rgba(0, 0, 0, .7); background-color:lightgray;}' +
                         '.viewer.draggable {}' +
                         '.viewer.scrollzoom {}' +
                         '.viewer.clickzoom {}' +
