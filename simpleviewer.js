@@ -9,13 +9,15 @@ function SimpleViewer (config) {
         active: null, // alias to nodes.img or nodes.video
         img: null,
         video: null,
-        button: null // close button
+        button: null, // close button
+        loading: null // loading span
     }
 
     var conf = {
         margin: 0, // margin from the corners of window if the content is too big - pixels
         min_size: 100, // minimum size when resizing/showing content - pixels
         button_html: '', // html inside close button
+        loading_html: '', // html inside loading span
         draggable: true,
         floating_button: true, // close button tries to stay inside visible area
         zoom: 'scroll', // zoom method - scroll/click/none
@@ -40,7 +42,6 @@ function SimpleViewer (config) {
     };
 
     this.update = update;
-    this.centrize = centrize;
     this.reconfig = reconfig;
 
     // Init
@@ -107,6 +108,7 @@ function SimpleViewer (config) {
     function constructView () {
         nodes.main = $('<div class="viewer">' +
                         '<button class="viewer-close">' + conf.button_html + '</button>' +
+                        '<span class="viewer-loading">' + conf.loading_html + '</span>' +
                         '<img class="viewer-content">' +
                         '<video class="viewer-content" loop autoplay></video>' +
                     '</div>');
@@ -119,6 +121,7 @@ function SimpleViewer (config) {
         if (conf.draggable)
             nodes.main.addClass('draggable');
 
+        nodes.loading = $('.viewer-loading', nodes.main);
         nodes.button = $('.viewer-close', nodes.main);
         nodes.video = $('video.viewer-content', nodes.main);
         nodes.img = $('img.viewer-content', nodes.main);
@@ -131,6 +134,16 @@ function SimpleViewer (config) {
     function update (src) {
         if (!nodes.main) constructView();
 
+        if (src === undefined)
+            if (nodes.active) src = nodes.active[0].src;
+            else return
+
+        loading(true);
+
+        if (nodes.main)
+            nodes.img.prop('src', '');
+            nodes.video.prop('src', '');
+
         if (/\.(webm|mp4)([?#].*)?$/i.test(src)) {
             nodes.active = nodes.video;
             nodes.img.hide();
@@ -139,13 +152,18 @@ function SimpleViewer (config) {
             .on('loadedmetadata', function () {
                 natural_size = getNaturalSize();
                 centrize();
+                loading(false);
             });
         }
         else {
             nodes.active = nodes.img;
             nodes.video.hide();
 
-            nodes.active.prop('src', src);
+            nodes.active.prop('src', src).load(function () {
+                natural_size = getNaturalSize();
+                centrize();
+                loading(false);
+            })
             natural_size = getNaturalSize();
             centrize();
         }
@@ -162,6 +180,11 @@ function SimpleViewer (config) {
 
         nodes.button
         .on('click', clickCloseHandler);
+    }
+
+    function loading (state) {
+        if (state === true) nodes.loading.show();
+        if (state === false) nodes.loading.hide();
     }
 
     function centrize () {
@@ -351,6 +374,7 @@ $(document.head).append('<style type="text/css">' +
                         '.viewer.scrollzoom {}' +
                         '.viewer.clickzoom {}' +
                         '.viewer.dragging {outline:2px dotted rgba(0, 0, 0, 1); cursor:move; box-shadow:0 0 0 2px white;}' +
+                        '.viewer-loading {position:absolute; left:50%; top:50%; margin:-12px 0 0 -12px; width:25px; height:25px; background-image:url(http://i.imgur.com/HTpFGms.gif); border-radius:50%; opacity:.7;}' +
                         '.viewer-close {position:absolute; padding:0; cursor:pointer; right:7px; top:7px; width:40px; height:40px; background-color:rgba(213, 75, 75, 0.3); border:2px outset rgba(213, 75, 75, 0.3);}' +
                         '.viewer-close:hover {background-color:rgba(213, 75, 75, 0.45);}' +
                         '.viewer-close:active {border:2px inset rgba(213, 75, 75, 0.3); top:8px;}' +
