@@ -3,8 +3,7 @@ var simpleviewer = new function () {
     var self = this,
         win = $(window),
         button_just_moved = false, // for floating close button
-        in_fullscreen = false,
-        in_drag = false,
+        in_fullscreen = in_drag = shown = false,
         real_size, // natural dimension of the current source content
         clientX, clientY; // mousetracking for scroll zooming
 
@@ -47,7 +46,6 @@ var simpleviewer = new function () {
     }
 
     // Public data
-    this.nodes = nodes;
     this.shown = function () {
         return shown;
     }
@@ -65,8 +63,6 @@ var simpleviewer = new function () {
             nodes.active[0].play();
 
         shown = true;
-
-        return self;
     }
 
     this.hide = function () {
@@ -74,22 +70,18 @@ var simpleviewer = new function () {
         if (in_fullscreen) fullscreen(false);
 
         shown = false;
-
-        return self;
     }
 
     this.next = function () {
-        if (sources.cursor + 1 === sources.all.length) return self;
+        if (sources.cursor + 1 === sources.all.length) return;
         update(++sources.cursor);
         updateArrows();
-        return self;
     }
 
     this.prev = function () {
-        if (sources.cursor === 0) return self;
+        if (sources.cursor === 0) return;
         update(--sources.cursor);
         updateArrows();
-        return self;
     }
 
     this.update = update;
@@ -101,7 +93,7 @@ var simpleviewer = new function () {
 
     // Private methods
     function setupConfig (c) {
-        if (!c) c = conf._default;
+        if (!c) c = conf._default; // HERE
 
         if (c.margin >= 0)
             conf.margin = parseInt(c.margin);
@@ -151,8 +143,6 @@ var simpleviewer = new function () {
 
         self.update(sources.current());
         if (shown) self.show();
-
-        return self;
     }
 
     function widthToHeight (h) {
@@ -209,14 +199,8 @@ var simpleviewer = new function () {
     }
 
     function constructView () {
-        nodes.root = $( '<div class="viewer-bg"></div>' +
-                        '<div class="viewer-prev"></div><div class="viewer-next"></div>' +
-                        '<div class="viewer-container">' +
-                            '<span class="viewer-close" style="right:' + conf.button_offset.right + 'px;top:' + conf.button_offset.top +  'px;"></span>' +
-                            '<span class="viewer-loading"></span>' +
-                            '<a><img class="viewer-content"></a>' +
-                            '<a><video class="viewer-content" loop autoplay></video></a>' +
-                        '</div>');
+        nodes.root = $(
+        '!html');
 
         nodes.container = nodes.root.filter('.viewer-container');
         nodes.bg = nodes.root.filter('.viewer-bg');
@@ -226,11 +210,19 @@ var simpleviewer = new function () {
         nodes.video = $('video.viewer-content', nodes.container);
         nodes.img = $('img.viewer-content', nodes.container);
 
+        nodes.slide_control = nodes.root.filter('.viewer-slideshow-control');
+        nodes.slide_stretch = $('viewer-slideshow-stretch', nodes.slide_control);
+        nodes.slide_time = $('viewer-slideshow-time', nodes.slide_control);
+        nodes.slide_time_up = $('viewer-slideshow-time-up', nodes.slide_control);
+        nodes.slide_time_down = $('viewer-slideshow-time-down', nodes.slide_control);
+
         if (!conf.gui_elements.close_button)
             nodes.close.hide();
 
         if (!conf.gui_elements.arrows)
             nodes.next.add(nodes.prev).hide();
+
+        nodes.close.css({'right': conf.button_offset.right, 'top': conf.button_offset.top});
 
         nodes.root.hide();
         nodes.root.appendTo(document.body);
@@ -274,7 +266,7 @@ var simpleviewer = new function () {
     }
 
     function update (src_arr, cursor) {
-        if (!nodes.root) constructView();
+        if (!nodes.root || !nodes.root.length) constructView();
 
         if (src_arr === undefined)
             return;
@@ -328,35 +320,33 @@ var simpleviewer = new function () {
 
         nodes.active.parent().attr('href', src);
         nodes.active.parent().show();
-
-        return self;
     }
 
     function updateArrows () {
         if (sources.all.length > 1) {
-            nodes.prev.add(nodes.next).removeClass('inactive');
-            if (sources.cursor === 0) nodes.prev.addClass('inactive');
-            if (sources.cursor + 1 === sources.all.length) nodes.next.addClass('inactive');
+            nodes.prev.add(nodes.next).removeClass('viewer-arrow-inactive');
+            if (sources.cursor === 0) nodes.prev.addClass('viewer-arrow-inactive');
+            if (sources.cursor + 1 === sources.all.length) nodes.next.addClass('viewer-arrow-inactive');
         }
     }
 
     function loading (state) {
-        nodes.container.removeClass('error');
-        if (state === true) nodes.container.addClass('loading');
-        if (state === false) nodes.container.removeClass('loading');
+        nodes.container.removeClass('viewer-error');
+        if (state === true) nodes.container.addClass('viewer-loading');
+        if (state === false) nodes.container.removeClass('viewer-loading');
         if (state === -1) {
-            nodes.container.removeClass('loading');
-            nodes.container.addClass('error');
+            nodes.container.removeClass('viewer-loading');
+            nodes.container.addClass('viewer-error');
         }
     }
 
     function dragging (state) {
         if (state) {
-            nodes.container.addClass('dragging');
+            nodes.container.addClass('viewer-dragging');
             in_drag = true;
         }
         else {
-            nodes.container.removeClass('dragging');
+            nodes.container.removeClass('viewer-dragging');
             in_drag = false;
         }
     }
@@ -375,6 +365,26 @@ var simpleviewer = new function () {
 
         contentSize(size.width, size.height);
         containerPos(pos.left, pos.top);
+    }
+
+    function stretchToWindow () {
+        var win_w = win.width(),
+            win_h = win.height(),
+            real_w = real_size.width,
+            real_h = real_size.height,
+            new_pos, w, h;
+
+        if (win_w/win_h > real_w/real_h)
+            h = win_h;
+        else
+            w = win_w;
+
+        if (isNaN(w)) w = widthToHeight(h);
+        if (isNaN(h)) h = heightToWidth(w);
+
+        new_pos = centrizedPos(w, h);
+        contentSize(w, h);
+        containerPos(new_pos.left, new_pos.top);
     }
 
     function fullscreen (state) {
@@ -398,8 +408,6 @@ var simpleviewer = new function () {
               b.webkitRequestFullscreen();
             in_fullscreen = true;
         }
-
-        return self;
     }
 
     function adjustCloseButton () {
@@ -467,7 +475,8 @@ var simpleviewer = new function () {
             h = heightToWidth(w);
 
         // return if it's going to be too small
-        if (h < conf.min_size || w < conf.min_size) return;
+        if (multiplier < 1)
+            if (h < conf.min_size || w < conf.min_size) return;
 
         var offset_x = clientX - pos.left,
             offset_y = clientY - pos.top,
@@ -550,6 +559,12 @@ var simpleviewer = new function () {
                 win.off('resize', fitToWindow);
             }, 100);
         }
+        // 'esc' - close viewer
+        else if (e.which === 27)
+            self.hide();
+        // 's' - stretch to window
+        else if (e.which === 83)
+            stretchToWindow();
         // '0' or 'numpad 0' - fit to window
         else if (e.which === 48 || e.which === 96)
             fitToWindow();
@@ -559,9 +574,8 @@ var simpleviewer = new function () {
             if (e.which === 37)
                 self.prev()
             // '>' or 'space' - next
-            else if (e.which === 39 || e.which === 32) {
+            else if (e.which === 39 || e.which === 32)
                 self.next();
-            }
         }
     }
 
@@ -589,33 +603,6 @@ function simpleviewerHandler (e, src) {
     return false;
 }
 
-$(document.head).append(
-'<style type="text/css">' +
-// main container
-'.viewer-container {position:fixed; z-index:7;}' +
-// img/video wrapper
-'.viewer-container a {cursor:default; display:block; overflow:hidden; max-height:100%; outline:1px solid rgba(0, 0, 0, .7); background-color:lightgray;}' +
-    // disable selecting
-    '.viewer-container a {-moz-user-select:none; -webkit-user-select:none; -ms-user-select: none; user-select: none;}' +
-// arrows
-'.viewer-next, .viewer-prev {cursor:pointer; position:fixed; z-index:10; width:150px; height:100%; top:0; background-position:center; background-repeat:no-repeat; background-color:rgba(0,0,0,.45);}' +
-'.viewer-next {right:0; background-image:url(http://i.imgur.com/9JXuph4.png);}' +
-'.viewer-prev {left:0; background-image:url(http://i.imgur.com/lS19ZRg.png);}' +
-'.viewer-next.inactive, .viewer-prev.inactive {background-image:none;}' +
-// background
-'.viewer-bg {position:fixed; z-index:5; width:100%; height:100%; top:0; left:0; background-color:rgba(0,0,0,.4);}' +
-// dragging
-'.viewer-container.dragging a {outline:2px dotted rgba(0, 0, 0, 1); cursor:move; box-shadow:0 0 0 2px white;}' +
-// zooming by click
-'.viewer-container.zoomed {overflow:auto; max-width:100%; max-height:100%;}' +
-'.viewer-container.zoomable a {cursor:zoom-in;}' +
-'.viewer-container.zoomed a {cursor:zoom-out;}' +
-// loading indicator
-'.viewer-loading {position:absolute; left:50%; top:50%; margin:-12px 0 0 -12px; width:25px; height:25px; visibility:hidden; background-image:url(http://i.imgur.com/HTpFGms.gif); border-radius:50%; opacity:.7;}' +
-'.viewer-container.loading .viewer-loading {visibility:visible;}' +
-'.viewer-container.error .viewer-loading {visibility:visible; background-image:url(http://i.imgur.com/xPYn3BA.png);}' +
-// close button
-'.viewer-close {position:absolute; border-radius:50%; box-shadow:0 0 2px rgba(0, 0, 0, 0.5); opacity:.3; display:block; cursor:pointer; width:40px; height:40px; background-color:rgba(0, 0, 0, 0.5); background-image:url("http://i.imgur.com/ZXAJoup.png");}' +
-'.viewer-close:hover {opacity:.6;}' +
-'.viewer-close:active {margin:1px -1px; box-shadow:none; border:1px solid rgba(0, 0, 0, 0.5);}' +
+$(document.head).append('<style type="text/css">' +
+'!css' +
 '</style>');

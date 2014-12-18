@@ -1,0 +1,213 @@
+/* main container */
+.viewer-container {
+    position: fixed;
+    z-index: 110;
+}
+
+/* img/video wrapper */
+.viewer-container a {
+    cursor: default;
+    display: block;
+    overflow: hidden;
+    max-height: 100%;
+    outline: 1px solid rgba(0, 0, 0, .7);
+    background-color: lightgray;
+    user-select:  none;
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select:  none;
+}
+
+    /* dragging */
+    .viewer-container.viewer-dragging a {
+        outline: 2px dotted rgba(0, 0, 0, 1);
+        cursor: move;
+        box-shadow: 0 0 0 2px white;
+    }
+
+/* sprite users */
+.viewer-next:after,
+.viewer-prev:after,
+.viewer-container.error .viewer-loading,
+.viewer-close {
+    background-image: url(http://i.imgur.com/rt5sPBi.png);
+    background-repeat: no-repeat;
+    display: block;
+}
+
+/* arrows */
+.viewer-arrow {
+    width: 150px;
+    height: 100%;
+    top: 0;
+    z-index: 120;
+    position: fixed;
+    cursor: pointer;
+    background-color: rgba(0,0,0,.45);
+}
+.viewer-arrow-inactive {
+    cursor: default;
+}
+.viewer-arrow:after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 50px;
+    height: 83px;
+    margin: -41px 0 0 -25px;
+    content: "";
+}
+.viewer-arrow-inactive:after {
+    display: none;
+}
+.viewer-next {
+    right: 0;
+}
+.viewer-next:after {
+    background-position: -90px -5px;
+}
+.viewer-prev {
+    left: 0;
+}
+.viewer-prev:after {
+    background-position: -5px -98px;
+}
+
+/* background */
+.viewer-bg {
+    position: fixed;
+    z-index: 100;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background-color: rgba(0,0,0,.4);
+}
+
+/* loading status */
+.viewer-status {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    margin: -12px 0 0 -12px;
+    width: 25px;
+    height: 25px;
+    visibility: hidden;
+    background-image: url(http://i.imgur.com/HTpFGms.gif);
+    border-radius: 50%;
+    opacity: .7;
+}
+.viewer-container.viewer-loading .viewer-status {
+    visibility: visible;
+}
+
+    /* error */
+    .viewer-container.viewer-error .viewer-status {
+        visibility: visible;
+        background-image: url(http://i.imgur.com/rt5sPBi.png);
+        background-position: -55px -5px;
+    }
+
+/* close button */
+.viewer-close {
+    position: absolute;
+    border-radius: 50%;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+    opacity: .3;
+    display: block;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    background-position: -5px -5px;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+.viewer-close:hover {
+    opacity: .6;
+}
+.viewer-close:active {
+    margin: 1px -1px;
+    box-shadow: none;
+    border: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+/* slideshow toolbar */
+.viewer-slideshow-control {
+    width: 185px;
+    height: 24px;
+    background-color: rgba(0,0,0,.45);
+    position: fixed;
+    border-radius: 4px 4px 0 0;
+    left: 50%;
+    overflow: hidden;
+    bottom: 0;
+    margin-left: -92px;
+    z-index: 120;
+    opacity: .3;
+    cursor: default;
+}
+.viewer-slideshow-control:hover {
+    opacity: .7;
+}
+
+    /* slideshow toolbar items */
+    .viewer-slideshow-control > * {
+        display: inline-block;
+        cursor: pointer;
+        font-weight: bold;
+        color: white;
+        height: 24px;
+        font-size: 18px;
+        user-select:  none;
+            -moz-user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select:  none;
+    }
+    .viewer-slideshow-control > *:hover {
+        background-color: rgba(0,0,0,.5);
+    }
+
+    .viewer-slideshow-control > *:after {
+        display: inline-block;
+    }
+
+    .viewer-slideshow-stretch {
+        width: 80px;
+    }
+    .viewer-slideshow-stretch.viewer-slideshow-stretched:after {
+        text-decoration: line-through;
+    }
+    .viewer-slideshow-stretch:after {
+        content: "stretch";
+        text-align: center;
+        padding: 0 5px;
+    }
+
+    .viewer-slideshow-time-down:after {
+        content: "⬇";
+    }
+
+    .viewer-slideshow-time-up:after {
+        content: "⬆";
+    }
+
+    .viewer-slideshow-time:hover {
+        background-color: transparent;
+        cursor: default;
+    }
+    .viewer-slideshow-time:after {
+        content: "s";
+    }
+
+    .viewer-slideshow-play {
+        position: relative;
+        width: 32px;
+        text-align: center;
+    }
+    .viewer-slideshow-play:after {
+        content: "▶";
+        position: relative;
+        top: -1px;
+    }
+    .viewer-slideshow-pause:after {
+        content: "▮▮";
+    }

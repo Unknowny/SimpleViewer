@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+<script src="https://code.jquery.com/jquery-2.1.1.min.js" type="text/javascript"></script>
+<link rel="stylesheet" type="text/css" href="view.css">
+</head>
+<body>
+
+<!-- split -->
+<div class="viewer-bg"></div>
+<div class="viewer-arrow viewer-prev"></div>
+<div class="viewer-arrow viewer-next"></div>
+<div class="viewer-container">
+    <div class="viewer-close"></div>
+    <div class="viewer-status"></div>
+    <a><img class="viewer-content"></a>
+    <a><video class="viewer-content" loop autoplay></video></a>
+</div>
+<div class="viewer-slideshow-control">
+    <div class="viewer-slideshow-stretch"></div>
+    <div class="viewer-slideshow-time-down"></div>
+    <div class="viewer-slideshow-time"></div>
+    <div class="viewer-slideshow-time-up"></div>
+    <div class="viewer-slideshow-play "></div>
+</div>
+<!-- split -->
+
+<div style="position:absolute;left:40%;top:40%;z-index:500">
+<button id="loading">loading</button>
+<button id="error">error</button>
+</div>
+
+<script type="text/javascript">
+
+$('.viewer-slideshow-time').text("3");
+$('.viewer-close').css({'right': 7, 'top': 7});
+$('#error').click(function () {
+    $('.viewer-container').toggleClass('viewer-error');
+});
+$('#loading').click(function () {
+    $('.viewer-container').toggleClass('viewer-loading');
+});
+$('.viewer-slideshow-play').click(function () {
+    $('.viewer-slideshow-play').toggleClass('viewer-slideshow-pause');
+});
+$('.viewer-slideshow-stretch').click(function () {
+    $('.viewer-slideshow-stretch').toggleClass('viewer-slideshow-stretched');
+});
+$('.viewer-arrow').click(function () {
+    $(this).toggleClass('viewer-arrow-inactive');
+});
+</script>
+</body>
+</html>
