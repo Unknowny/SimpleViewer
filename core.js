@@ -3,7 +3,9 @@ var simpleviewer = new function () {
     var self = this,
         win = $(window),
         button_just_moved = false, // for floating close button
-        in_fullscreen = in_drag = shown = false,
+        in_fullscreen = in_drag = in_slideshow = shown = false,
+        slideshow_timeout = 2000, // slideshow interval in milliseconds
+        slideshow_pause = false,
         real_size, // natural dimension of the current source content
         clientX, clientY; // mousetracking for scroll zooming
 
@@ -22,9 +24,17 @@ var simpleviewer = new function () {
         img: null,
         video: null,
         close: null,
+        arrows: null, // alias to nodes.next.add(nodes.prev)
         next: null,
         prev: null,
-        bg: null
+        bg: null,
+        // slideshow toolbar
+        slide_control: null, // container for slide_ elements
+        slide_stretch: null,
+        slide_time: null,
+        slide_time_up: null,
+        slide_time_down: null,
+        slide_playpause: null
     }
 
     var conf = {
@@ -54,7 +64,7 @@ var simpleviewer = new function () {
         nodes.container.show();
 
         if (sources.all.length > 1 && conf.gui_elements.arrows)
-            nodes.next.add(nodes.prev).show();
+            nodes.arrows.show();
 
         if (conf.gui_elements.bg)
             nodes.bg.show();
@@ -66,34 +76,37 @@ var simpleviewer = new function () {
     }
 
     this.hide = function () {
+        if (in_fullscreen) toggleFullscreen();
+        if (in_slideshow) toggleSlideshow();
+
         nodes.root.hide();
-        if (in_fullscreen) fullscreen(false);
 
         shown = false;
     }
 
     this.next = function () {
-        if (sources.cursor + 1 === sources.all.length) return;
+        if (sources.cursor + 1 === sources.all.length) return false;
         update(++sources.cursor);
         updateArrows();
+        return true;
     }
 
     this.prev = function () {
-        if (sources.cursor === 0) return;
+        if (sources.cursor === 0) return false;
         update(--sources.cursor);
         updateArrows();
+        return true;
     }
 
     this.update = update;
-    this.fullscreen = fullscreen;
     this.reconfig = reconfig;
 
     // Init
-    setupConfig();
+    setupConfig(conf._default);
 
     // Private methods
     function setupConfig (c) {
-        if (!c) c = conf._default; // HERE
+        if (!c) return;
 
         if (c.margin >= 0)
             conf.margin = parseInt(c.margin);
@@ -139,7 +152,7 @@ var simpleviewer = new function () {
             nodes = {};
         }
 
-        setupConfig(config);
+        setupConfig(config || conf._default);
 
         self.update(sources.current());
         if (shown) self.show();
@@ -206,23 +219,26 @@ var simpleviewer = new function () {
         nodes.bg = nodes.root.filter('.viewer-bg');
         nodes.next = nodes.root.filter('.viewer-next');
         nodes.prev = nodes.root.filter('.viewer-prev');
+        nodes.arrows = nodes.next.add(nodes.prev);
         nodes.close = $('.viewer-close', nodes.container);
         nodes.video = $('video.viewer-content', nodes.container);
         nodes.img = $('img.viewer-content', nodes.container);
 
         nodes.slide_control = nodes.root.filter('.viewer-slideshow-control');
-        nodes.slide_stretch = $('viewer-slideshow-stretch', nodes.slide_control);
-        nodes.slide_time = $('viewer-slideshow-time', nodes.slide_control);
-        nodes.slide_time_up = $('viewer-slideshow-time-up', nodes.slide_control);
-        nodes.slide_time_down = $('viewer-slideshow-time-down', nodes.slide_control);
+        nodes.slide_stretch = $('.viewer-slideshow-stretch', nodes.slide_control);
+        nodes.slide_time = $('.viewer-slideshow-time', nodes.slide_control);
+        nodes.slide_time_up = $('.viewer-slideshow-time-up', nodes.slide_control);
+        nodes.slide_time_down = $('.viewer-slideshow-time-down', nodes.slide_control);
+        nodes.slide_playpause = $('.viewer-slideshow-play', nodes.slide_control);
 
         if (!conf.gui_elements.close_button)
             nodes.close.hide();
 
         if (!conf.gui_elements.arrows)
-            nodes.next.add(nodes.prev).hide();
+            nodes.arrows.hide();
 
         nodes.close.css({'right': conf.button_offset.right, 'top': conf.button_offset.top});
+        nodes.slide_time.text(slideshow_timeout);
 
         nodes.root.hide();
         nodes.root.appendTo(document.body);
@@ -324,7 +340,7 @@ var simpleviewer = new function () {
 
     function updateArrows () {
         if (sources.all.length > 1) {
-            nodes.prev.add(nodes.next).removeClass('viewer-arrow-inactive');
+            nodes.arrows.removeClass('viewer-arrow-inactive');
             if (sources.cursor === 0) nodes.prev.addClass('viewer-arrow-inactive');
             if (sources.cursor + 1 === sources.all.length) nodes.next.addClass('viewer-arrow-inactive');
         }
@@ -387,19 +403,10 @@ var simpleviewer = new function () {
         containerPos(new_pos.left, new_pos.top);
     }
 
-    function fullscreen (state) {
+    function toggleFullscreen () {
         var d = document, b = document.body;
 
-        if (state === false) {
-            if (d.cancelFullscreen)
-              d.cancelFullscreen();
-            else if (d.mozCancelFullScreen)
-              d.mozCancelFullScreen();
-            else if (d.webkitCancelFullScreen)
-              d.webkitCancelFullScreen();
-            in_fullscreen = false;
-        }
-        else {
+        if (!in_fullscreen) {
             if (b.requestFullscreen)
               b.requestFullscreen();
             else if (b.mozRequestFullScreen)
@@ -407,7 +414,68 @@ var simpleviewer = new function () {
             else if (b.webkitRequestFullscreen)
               b.webkitRequestFullscreen();
             in_fullscreen = true;
+            win.on('resize', fitToWindow);
         }
+        else {
+            if (d.cancelFullscreen)
+              d.cancelFullscreen();
+            else if (d.mozCancelFullScreen)
+              d.mozCancelFullScreen();
+            else if (d.webkitCancelFullScreen)
+              d.webkitCancelFullScreen();
+            in_fullscreen = false;
+            setTimeout(function () {
+                win.off('resize', fitToWindow);
+            }, 100);
+        }
+    }
+
+    function toggleSlideshow () {
+        if (!in_slideshow) {
+            in_slideshow = true;
+            var orig_timeout = prev_timeout = slideshow_timeout;
+
+            nodes.slide_control.show();
+            nodes.slide_time.text(slideshow_timeout/1000)
+            if (conf.gui_elements.arrows) nodes.arrows.hide();
+
+            var tout = setTimeout(function () {
+                // if should stop slideshow
+                if (!in_slideshow) {
+                    slideshow_timeout = orig_timeout;
+                    nodes.slide_time.text(orig_timeout/1000)
+                    clearTimeout(tout);
+                    return;
+                }
+                // if should change timeout
+                else if (slideshow_timeout !== prev_timeout)
+                    prev_timeout = slideshow_timeout;
+                // else: next source
+                else if (!slideshow_pause)
+                    self.next() || self.update(0);
+                tout = setTimeout(arguments.callee, slideshow_timeout)
+            }, slideshow_timeout);
+        }
+        else {
+            in_slideshow = false;
+
+            nodes.slide_control.hide();
+            if (conf.gui_elements.arrows) nodes.arrows.show();
+        }
+    }
+
+    function slideshowTogglePause () {
+        if (!slideshow_pause) slideshow_pause = true;
+        else slideshow_pause = false;
+
+        nodes.slide_playpause.toggleClass('viewer-slideshow-pause');
+    }
+
+    function slideshowTimeout (timeout) {
+        if (timeout < 1000) return;
+
+        slideshow_timeout = timeout;
+        nodes.slide_time.text(timeout/1000);
     }
 
     function adjustCloseButton () {
@@ -548,42 +616,62 @@ var simpleviewer = new function () {
     function keyupHandler (e) {
         if (e.shiftKey || e.ctrlKey || e.altKey || !shown) return;
 
-        // 'f' - fullscreen
-        if (e.which === 70 && !in_fullscreen) {
-            fullscreen(true);
-            win.on('resize', fitToWindow);
-        }
-        else if (e.which === 70) {
-            fullscreen(false);
-            setTimeout(function () {
-                win.off('resize', fitToWindow);
-            }, 100);
-        }
-        // 'esc' - close viewer
-        else if (e.which === 27)
-            self.hide();
-        // 's' - stretch to window
-        else if (e.which === 83)
-            stretchToWindow();
-        // '0' or 'numpad 0' - fit to window
-        else if (e.which === 48 || e.which === 96)
-            fitToWindow();
-        // if multiple sources
-        else if (sources.all.length > 1 ) {
+        switch (e.which) {
+            // 'f' - fullscreen
+            case 70:
+                toggleFullscreen();
+                break;
+            // 'esc' - stop slideshow or close viewer
+            case 27:
+                if (in_slideshow)
+                    toggleSlideshow();
+                else
+                    self.hide();
+                break;
+            // 's' - slideshow
+            case 83:
+                toggleSlideshow();
+                break;
+            // 'down' - slideshow speed down
+            case 40:
+                if (in_slideshow)
+                    slideshowTimeout(slideshow_timeout - 1000);
+                break;
+            // 'up' - slideshow speed up
+            case 38:
+                if (in_slideshow)
+                    slideshowTimeout(slideshow_timeout + 1000);
+                break;
+            // '0' or 'numpad 0' - fit to window
+            case 48:
+            case 96:
+                fitToWindow();
+                break;
             // '<' - prev
-            if (e.which === 37)
-                self.prev()
-            // '>' or 'space' - next
-            else if (e.which === 39 || e.which === 32)
-                self.next();
+            case 37:
+                if (sources.all.length > 1)
+                    self.prev()
+                break;
+            // 'space' - pause/play slideshow or next source
+            case 32:
+                if (in_slideshow)
+                    slideshowTogglePause();
+                else if (sources.all.length > 1)
+                    self.next();
+                break;
+            // '>' - next
+            case 39:
+                if (sources.all.length > 1)
+                    self.next();
+                break;
         }
     }
 
     function keydownHandler (e) {
-        // disable scroll by space when gallery is open
-        if (e.which === 32 && shown && sources.all.length > 1) {
-            return false;
-        }
+        // disable some of default actions
+        keycodes = [32, 39, 37, 40, 38];
+        if (keycodes.indexOf(e.which) != -1)
+            e.preventDefault();
     }
 }
 
