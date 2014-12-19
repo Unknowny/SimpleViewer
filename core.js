@@ -3,7 +3,7 @@ var simpleviewer = new function () {
     var self = this,
         win = $(window),
         button_just_moved = false, // for floating close button
-        in_fullscreen = in_drag = in_slideshow = shown = false,
+        in_fullscreen = in_drag = in_slideshow = stretching = shown = false,
         slideshow_timeout = 2000, // slideshow interval in milliseconds
         slideshow_pause = false,
         real_size, // natural dimension of the current source content
@@ -264,6 +264,21 @@ var simpleviewer = new function () {
             if (e.which !== 3) return false;
         });
 
+        // slideshow controls
+        nodes.slide_playpause.click(slideshowTogglePause);
+        nodes.slide_time_down.click(function () {
+            slideshowTimeout(slideshow_timeout - 1000);
+        });
+        nodes.slide_time_up.click(function () {
+            slideshowTimeout(slideshow_timeout + 1000);
+        });
+        nodes.slide_stretch.click(function () {
+            if (stretching) stretching = false;
+            else stretching = true;
+            adjustToWindow();
+            nodes.slide_stretch.toggleClass('viewer-slideshow-stretched');
+        })
+
         // close viewer
         nodes.close.click(clickCloseHandler);
         if (conf.close_by_bg)
@@ -309,7 +324,7 @@ var simpleviewer = new function () {
             nodes.active.attr('src', src)
             .on('loadedmetadata', function () {
                 real_size = getNaturalSize();
-                fitToWindow();
+                adjustToWindow();
                 loading(false);
             })
             .on('error', function () {
@@ -323,7 +338,7 @@ var simpleviewer = new function () {
             nodes.active.attr('src', src)
             .on('load', function () {
                 real_size = getNaturalSize();
-                fitToWindow();
+                adjustToWindow();
                 loading(false);
                 nodes.active.off('load');
             })
@@ -331,7 +346,7 @@ var simpleviewer = new function () {
                 loading(-1);
             });
             real_size = getNaturalSize();
-            fitToWindow();
+            adjustToWindow();
         }
 
         nodes.active.parent().attr('href', src);
@@ -365,6 +380,11 @@ var simpleviewer = new function () {
             nodes.container.removeClass('viewer-dragging');
             in_drag = false;
         }
+    }
+
+    function adjustToWindow () {
+        if (stretching) stretchToWindow();
+        else fitToWindow();
     }
 
     function fitToWindow () {
@@ -414,7 +434,7 @@ var simpleviewer = new function () {
             else if (b.webkitRequestFullscreen)
               b.webkitRequestFullscreen();
             in_fullscreen = true;
-            win.on('resize', fitToWindow);
+            win.on('resize', adjustToWindow);
         }
         else {
             if (d.cancelFullscreen)
@@ -425,7 +445,7 @@ var simpleviewer = new function () {
               d.webkitCancelFullScreen();
             in_fullscreen = false;
             setTimeout(function () {
-                win.off('resize', fitToWindow);
+                win.off('resize', adjustToWindow);
             }, 100);
         }
     }
