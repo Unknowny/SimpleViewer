@@ -486,7 +486,7 @@ var simpleviewer = new function () {
 
                 if (sshow_reset_time) {
                     countdown = sshow_timeout + 1000;
-                    sshow_reset_time = !sshow_reset_time;
+                    sshow_reset_time = false;
                 }
 
                 // pause
