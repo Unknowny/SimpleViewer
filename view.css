@@ -30,20 +30,20 @@
 .viewer-prev:after,
 .viewer-container.error .viewer-loading,
 .viewer-close {
-    background-image: url(http://i.imgur.com/rt5sPBi.png);
+    background-image: url(http://i.imgur.com/kP2BB7D.png);
     background-repeat: no-repeat;
     display: block;
 }
 
 /* arrows */
 .viewer-arrow {
-    width: 150px;
-    height: 100%;
-    top: 0;
+    width: 50%;
+    height: 35px;
+    bottom: 0;
     z-index: 120;
     position: fixed;
     cursor: pointer;
-    background-color: rgba(0,0,0,.45);
+    background-color: rgba(0,0,0,.25);
 }
 .viewer-arrow-inactive {
     cursor: default;
@@ -52,25 +52,31 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 50px;
-    height: 83px;
-    margin: -41px 0 0 -25px;
+    width: 15px;
+    height: 25px;
+    margin: -12px 0 0 -7px;
+    opacity: .5;
     content: "";
+}
+.viewer-arrow:hover:after {
+    opacity: 1;
 }
 .viewer-arrow-inactive:after {
     display: none;
 }
+
 .viewer-next {
     right: 0;
 }
 .viewer-next:after {
-    background-position: -90px -5px;
+    background-position: -75px 0;
 }
+
 .viewer-prev {
     left: 0;
 }
 .viewer-prev:after {
-    background-position: -5px -98px;
+    background-position: -95px 0;
 }
 
 /* background */
@@ -104,8 +110,8 @@
     /* error */
     .viewer-container.viewer-error .viewer-status {
         visibility: visible;
-        background-image: url(http://i.imgur.com/rt5sPBi.png);
-        background-position: -55px -5px;
+        background-image: url(http://i.imgur.com/kP2BB7D.png);
+        background-position: -45px 0;
     }
 
 /* close button */
@@ -118,7 +124,7 @@
     cursor: pointer;
     width: 40px;
     height: 40px;
-    background-position: -5px -5px;
+    background-position: 0 0;
     background-color: rgba(0, 0, 0, 0.5);
 }
 .viewer-close:hover {
@@ -144,6 +150,7 @@
     z-index: 120;
     opacity: .5;
     cursor: default;
+    font-family: DejaVu Serif, Georgia, Liberation Serif, serif;
 }
 .viewer-slideshow-control:hover {
     opacity: .8;
