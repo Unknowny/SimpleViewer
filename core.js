@@ -181,11 +181,17 @@ var simpleviewer = new function () {
     }
 
     function getNaturalSize () {
-        var node = nodes.active[0];
-        if (nodes.active === nodes.video)
-            return {width: node.videoWidth, height: node.videoHeight};
-        else
-            return {width: node.naturalWidth, height: node.naturalHeight};
+        var node = nodes.active[0],
+            video = nodes.active === nodes.video,
+            real_w, real_h;
+
+        real_w = video ? node.videoWidth : node.naturalWidth;
+        real_h = video ? node.videoHeight : node.naturalHeight;
+
+        if (!real_w) real_w = win.width()*0.3;
+        if (!real_h) real_h = win.height()*0.5;
+
+        return {width: real_w, height: real_h};
     }
 
     function adjustedSize (w, h) {
@@ -393,15 +399,7 @@ var simpleviewer = new function () {
     }
 
     function fitToWindow () {
-        var real_w = real_size.width,
-            real_h = real_size.height;
-
-        if (!real_w || !real_h) {
-            real_w = win.width()*0.3;
-            real_h = win.height()*0.5;
-        }
-
-        var size = adjustedSize(real_w, real_h),
+        var size = adjustedSize(real_size.width, real_size.height),
             pos = centrizedPos(size.width, size.height);
 
         contentSize(size.width, size.height);
