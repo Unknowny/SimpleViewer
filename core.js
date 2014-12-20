@@ -4,8 +4,9 @@ var simpleviewer = new function () {
         win = $(window),
         button_just_moved = false, // for floating close button
         in_fullscreen = in_drag = in_slideshow = stretching = shown = false,
-        slideshow_timeout = 2000, // slideshow interval in milliseconds
-        slideshow_pause = false,
+        sshow_timeout = 2000, // slideshow interval in milliseconds
+        sshow_pause = sshow_reset_time = false,
+        loading_state = 1, // 1 - loading, 0 - loaded, -1 - error
         real_size, // natural dimension of the current source content
         clientX, clientY; // mousetracking for scroll zooming
 
@@ -29,23 +30,23 @@ var simpleviewer = new function () {
         prev: null,
         bg: null,
         // slideshow toolbar
-        slide_control: null, // container for slide_ elements
-        slide_stretch: null,
-        slide_time: null,
-        slide_time_up: null,
-        slide_time_down: null,
-        slide_playpause: null
+        sshow_control: null, // container for sshow_ elements
+        sshow_stretch: null,
+        sshow_time: null,
+        sshow_time_up: null,
+        sshow_time_down: null,
+        sshow_playpause: null
     }
 
     var conf = {
         _default: {
             margin: 0,  // margin from the corners of window if the content is too big - pixels
             min_size: 100, // minimum size when resizing/showing content - pixels
-            close_by_content: false, // close viewer by click on shown content
+            close_by_content: true, // close viewer by click on shown content
             close_by_bg: true,
             gui_elements: { // enabled gui elements
-                close_button: true,
-                bg: false,
+                close_button: false,
+                bg: true,
                 arrows: true
             },
             button_offset: {right: 7, top: 7}, // close button offset from the top right corner - pixels
@@ -86,6 +87,10 @@ var simpleviewer = new function () {
 
     this.next = function () {
         if (sources.cursor + 1 === sources.all.length) return false;
+
+        if (in_slideshow && arguments[0])
+            sshow_reset_time = true;
+
         update(++sources.cursor);
         updateArrows();
         return true;
@@ -93,6 +98,10 @@ var simpleviewer = new function () {
 
     this.prev = function () {
         if (sources.cursor === 0) return false;
+
+        if (in_slideshow && arguments[0])
+            sshow_reset_time = true;
+
         update(--sources.cursor);
         updateArrows();
         return true;
@@ -117,7 +126,7 @@ var simpleviewer = new function () {
         if (c.floating_button !== undefined)
             conf.floating_button = Boolean(c.floating_button);
 
-        if (c.gui_elements) {
+        if (typeof c.gui_elements === 'object') {
             if (c.gui_elements.close_button !== undefined) {
                 conf.gui_elements.close_button = Boolean(c.gui_elements.close_button);
                 if (!conf.gui_elements.close_button)
@@ -152,7 +161,12 @@ var simpleviewer = new function () {
             nodes = {};
         }
 
-        setupConfig(config || conf._default);
+        if (config === null)
+            config = conf._default;
+        else if (typeof config !== 'object')
+            config = {};
+
+        setupConfig(config);
 
         self.update(sources.current());
         if (shown) self.show();
@@ -224,12 +238,12 @@ var simpleviewer = new function () {
         nodes.video = $('video.viewer-content', nodes.container);
         nodes.img = $('img.viewer-content', nodes.container);
 
-        nodes.slide_control = nodes.root.filter('.viewer-slideshow-control');
-        nodes.slide_stretch = $('.viewer-slideshow-stretch', nodes.slide_control);
-        nodes.slide_time = $('.viewer-slideshow-time', nodes.slide_control);
-        nodes.slide_time_up = $('.viewer-slideshow-time-up', nodes.slide_control);
-        nodes.slide_time_down = $('.viewer-slideshow-time-down', nodes.slide_control);
-        nodes.slide_playpause = $('.viewer-slideshow-play', nodes.slide_control);
+        nodes.sshow_control = nodes.root.filter('.viewer-slideshow-control');
+        nodes.sshow_stretch = $('.viewer-slideshow-stretch', nodes.sshow_control);
+        nodes.sshow_time = $('.viewer-slideshow-time', nodes.sshow_control);
+        nodes.sshow_time_up = $('.viewer-slideshow-time-up', nodes.sshow_control);
+        nodes.sshow_time_down = $('.viewer-slideshow-time-down', nodes.sshow_control);
+        nodes.sshow_playpause = $('.viewer-slideshow-play', nodes.sshow_control);
 
         if (!conf.gui_elements.close_button)
             nodes.close.hide();
@@ -237,8 +251,11 @@ var simpleviewer = new function () {
         if (!conf.gui_elements.arrows)
             nodes.arrows.hide();
 
+        nodes.active = nodes.video;
+        nodes.img.parent().hide();
+
         nodes.close.css({'right': conf.button_offset.right, 'top': conf.button_offset.top});
-        nodes.slide_time.text(slideshow_timeout);
+        nodes.sshow_time.text(sshow_timeout);
 
         nodes.root.hide();
         nodes.root.appendTo(document.body);
@@ -246,11 +263,11 @@ var simpleviewer = new function () {
     }
 
     function setEvents () {
-        var inner_nodes = nodes.img.add(nodes.video),
+        var content_nodes = nodes.img.add(nodes.video),
             $body = $(document.body);
 
         // scroll zooming
-        inner_nodes
+        content_nodes
         .on('wheel', wheelResizeHandler)
         .on('mousemove', mouseTrackingHandler)
         .one('mouseover', mouseTrackingHandler)
@@ -259,32 +276,39 @@ var simpleviewer = new function () {
         .on('mouseout mouseup', mouseupDropHandler);
 
         // for middle click emulation
-        inner_nodes.parent()
+        content_nodes.parent()
         .on('mouseup click', function (e) {
             if (e.which !== 3) return false;
         });
 
         // slideshow controls
-        nodes.slide_playpause.click(slideshowTogglePause);
-        nodes.slide_time_down.click(function () {
-            slideshowTimeout(slideshow_timeout - 1000);
+        nodes.sshow_playpause.click(slideshowTogglePause);
+        nodes.sshow_time_down.click(function () {
+            slideshowTimeout(sshow_timeout - 1000);
         });
-        nodes.slide_time_up.click(function () {
-            slideshowTimeout(slideshow_timeout + 1000);
+        nodes.sshow_time_up.click(function () {
+            slideshowTimeout(sshow_timeout + 1000);
         });
-        nodes.slide_stretch.click(function () {
+        nodes.sshow_stretch.click(function () {
             if (stretching) stretching = false;
             else stretching = true;
             adjustToWindow();
-            nodes.slide_stretch.toggleClass('viewer-slideshow-stretched');
+            nodes.sshow_stretch.toggleClass('viewer-slideshow-stretched');
         })
+
+        // loading
+        nodes.video.on('loadedmetadata', loadHandler);
+        nodes.img.on('load', loadHandler);
+
+        // error
+        content_nodes.on('error', errorHandler);
 
         // close viewer
         nodes.close.click(clickCloseHandler);
         if (conf.close_by_bg)
             nodes.bg.on('click', clickCloseHandler);
         if (conf.close_by_content)
-            inner_nodes.on('click', clickCloseHandler);
+            content_nodes.on('click', clickCloseHandler);
 
         // next/prev for galleries
         nodes.next.click(self.next);
@@ -299,9 +323,9 @@ var simpleviewer = new function () {
     function update (src_arr, cursor) {
         if (!nodes.root || !nodes.root.length) constructView();
 
-        if (src_arr === undefined)
-            return;
-        else if (typeof src_arr === 'number') {
+        if (src_arr === undefined) return;
+
+        if (typeof src_arr === 'number') {
             sources.cursor = src_arr;
         }
         else {
@@ -309,45 +333,28 @@ var simpleviewer = new function () {
             sources.cursor = cursor || 0;
         }
 
-        loading(true);
+        loading(1);
 
         var src = sources.current();
-
         updateArrows();
-        nodes.img.attr('src', '');
-        nodes.video.attr('src', '');
 
         if (/\.(webm|mp4)([?#].*)?$/i.test(src)) {
             nodes.active = nodes.video;
             nodes.img.parent().hide();
-
-            nodes.active.attr('src', src)
-            .on('loadedmetadata', function () {
-                real_size = getNaturalSize();
-                adjustToWindow();
-                loading(false);
-            })
-            .on('error', function () {
-                loading(-1);
-            });
         }
         else {
             nodes.active = nodes.img;
             nodes.video.parent().hide();
-
-            nodes.active.attr('src', src)
-            .on('load', function () {
-                real_size = getNaturalSize();
-                adjustToWindow();
-                loading(false);
-                nodes.active.off('load');
-            })
-            .on('error', function () {
-                loading(-1);
-            });
-            real_size = getNaturalSize();
-            adjustToWindow();
         }
+
+        nodes.active
+        .off('error', errorHandler)
+        .attr('src', '')
+        .attr('src', src)
+        .on('error', errorHandler);
+
+        real_size = getNaturalSize();
+        adjustToWindow();
 
         nodes.active.parent().attr('href', src);
         nodes.active.parent().show();
@@ -363,23 +370,21 @@ var simpleviewer = new function () {
 
     function loading (state) {
         nodes.container.removeClass('viewer-error');
-        if (state === true) nodes.container.addClass('viewer-loading');
-        if (state === false) nodes.container.removeClass('viewer-loading');
+        if (state === 1) nodes.container.addClass('viewer-loading');
+        if (state === 0) nodes.container.removeClass('viewer-loading');
         if (state === -1) {
             nodes.container.removeClass('viewer-loading');
             nodes.container.addClass('viewer-error');
         }
+
+        loading_state = state;
     }
 
     function dragging (state) {
-        if (state) {
-            nodes.container.addClass('viewer-dragging');
-            in_drag = true;
-        }
-        else {
-            nodes.container.removeClass('viewer-dragging');
-            in_drag = false;
-        }
+        if (state) nodes.container.addClass('viewer-dragging');
+        else nodes.container.removeClass('viewer-dragging');
+
+        in_drag = state;
     }
 
     function adjustToWindow () {
@@ -451,51 +456,75 @@ var simpleviewer = new function () {
     }
 
     function toggleSlideshow () {
+        if (sources.all.length === 1) return false;
+
         if (!in_slideshow) {
             in_slideshow = true;
-            var orig_timeout = prev_timeout = slideshow_timeout;
+            var orig_timeout = prev_timeout = sshow_timeout,
+                countdown = sshow_timeout - 1000;
 
-            nodes.slide_control.show();
-            nodes.slide_time.text(slideshow_timeout/1000)
+            nodes.sshow_control.show();
+            nodes.sshow_time.text(sshow_timeout/1000);
             if (conf.gui_elements.arrows) nodes.arrows.hide();
+            if (conf.gui_elements.close_button) nodes.close.hide();
 
-            var tout = setTimeout(function () {
-                // if should stop slideshow
+            var intv_id = setInterval(function () {
+
+                // stop
                 if (!in_slideshow) {
-                    slideshow_timeout = orig_timeout;
-                    nodes.slide_time.text(orig_timeout/1000)
-                    clearTimeout(tout);
+                    sshow_timeout = orig_timeout;
+                    nodes.sshow_time.text(orig_timeout/1000)
+                    clearInterval(intv_id);
                     return;
                 }
-                // if should change timeout
-                else if (slideshow_timeout !== prev_timeout)
-                    prev_timeout = slideshow_timeout;
-                // else: next source
-                else if (!slideshow_pause)
-                    self.next() || self.update(0);
-                tout = setTimeout(arguments.callee, slideshow_timeout)
-            }, slideshow_timeout);
+
+                // change timeout
+                if (sshow_timeout !== prev_timeout) {
+                    prev_timeout = sshow_timeout;
+                    countdown = sshow_timeout + 1000;
+                }
+
+                if (sshow_reset_time) {
+                    countdown = sshow_timeout + 1000;
+                    sshow_reset_time = !sshow_reset_time;
+                }
+
+                // pause
+                if (sshow_pause || loading_state === 1);
+                // count down
+                else {
+                    if (countdown)
+                        countdown -= 1000
+                    // next
+                    if (!countdown) {
+                        self.next() || self.update(0);
+                        countdown = sshow_timeout;
+                    }
+                }
+
+            }, 1000);
         }
         else {
             in_slideshow = false;
 
-            nodes.slide_control.hide();
+            nodes.sshow_control.hide();
             if (conf.gui_elements.arrows) nodes.arrows.show();
+            if (conf.gui_elements.close_button) nodes.close.show();
         }
     }
 
     function slideshowTogglePause () {
-        if (!slideshow_pause) slideshow_pause = true;
-        else slideshow_pause = false;
+        if (!sshow_pause) sshow_pause = true;
+        else sshow_pause = false;
 
-        nodes.slide_playpause.toggleClass('viewer-slideshow-pause');
+        nodes.sshow_playpause.toggleClass('viewer-slideshow-pause');
     }
 
     function slideshowTimeout (timeout) {
         if (timeout < 1000) return;
 
-        slideshow_timeout = timeout;
-        nodes.slide_time.text(timeout/1000);
+        sshow_timeout = timeout;
+        nodes.sshow_time.text(timeout/1000);
     }
 
     function adjustCloseButton () {
@@ -612,25 +641,32 @@ var simpleviewer = new function () {
     }
 
     function mouseupDropHandler (e) {
-        dragging(false);
-
         nodes.active.off('mousemove', mousemoveDragHandler);
-
-        if (conf.close_by_content) {
-            nodes.active.off('click', clickCloseHandler);
-            setTimeout(function () {
-                nodes.active.on('click', clickCloseHandler);
-            }, 0);
-        }
     }
 
     function clickCloseHandler (e) {
         if (e.which !== 1) return;
 
-        if (conf.close_by_content)
-            nodes.active.off('mousemove', mousemoveDragHandler);
+        if (in_drag) {
+            dragging(false);
+            return;
+        }
 
         self.hide();
+    }
+
+    function errorHandler (e) {
+        if (loading_state === -1) return;
+
+        loading(-1);
+    }
+
+    function loadHandler (e) {
+        if (loading_state === 0) return;
+
+        real_size = getNaturalSize();
+        adjustToWindow();
+        loading(0);
     }
 
     function keyupHandler (e) {
@@ -655,12 +691,12 @@ var simpleviewer = new function () {
             // 'down' - slideshow speed down
             case 40:
                 if (in_slideshow)
-                    slideshowTimeout(slideshow_timeout - 1000);
+                    slideshowTimeout(sshow_timeout - 1000);
                 break;
             // 'up' - slideshow speed up
             case 38:
                 if (in_slideshow)
-                    slideshowTimeout(slideshow_timeout + 1000);
+                    slideshowTimeout(sshow_timeout + 1000);
                 break;
             // '0' or 'numpad 0' - fit to window
             case 48:
@@ -670,19 +706,19 @@ var simpleviewer = new function () {
             // '<' - prev
             case 37:
                 if (sources.all.length > 1)
-                    self.prev()
+                    self.prev(e)
                 break;
             // 'space' - pause/play slideshow or next source
             case 32:
                 if (in_slideshow)
                     slideshowTogglePause();
                 else if (sources.all.length > 1)
-                    self.next();
+                    self.next(e);
                 break;
             // '>' - next
             case 39:
                 if (sources.all.length > 1)
-                    self.next();
+                    self.next(e);
                 break;
         }
     }
