@@ -715,6 +715,11 @@ var simpleviewer = new function () {
                 if (sources.all.length > 1)
                     self.prev(e)
                 break;
+            // 'cancel' - pause/play slideshow
+            case 3:
+                if (in_slideshow)
+                    slideshowTogglePause();
+                break;
             // 'space' - pause/play slideshow or next source
             case 32:
                 if (in_slideshow)
