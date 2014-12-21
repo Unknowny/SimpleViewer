@@ -62,6 +62,8 @@ var simpleviewer = new function () {
     }
 
     this.show = function () {
+        if (shown) return false;
+
         nodes.container.show();
 
         if (sources.all.length > 1 && conf.gui_elements.arrows)
@@ -77,6 +79,8 @@ var simpleviewer = new function () {
     }
 
     this.hide = function () {
+        if (!shown) return false;
+
         if (in_fullscreen) toggleFullscreen();
         if (in_slideshow) toggleSlideshow();
 
@@ -767,7 +771,7 @@ var simpleviewer = new function () {
         }
 
         self.update(src_arr, cursor);
-        if (!self.shown()) self.show();
+        self.show();
 
         return false;
     }
