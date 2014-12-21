@@ -341,7 +341,11 @@ var simpleviewer = new function () {
         }
         else {
             sources.all = [].concat(src_arr);
-            sources.cursor = cursor || 0;
+
+            if (!cursor || cursor < 0 || cursor >= sources.all.length)
+                cursor = 0;
+
+            sources.cursor = cursor;
         }
 
         loading(1);
