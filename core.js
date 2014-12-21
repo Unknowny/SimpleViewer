@@ -109,6 +109,7 @@ var simpleviewer = new function () {
 
     this.update = update;
     this.reconfig = reconfig;
+    this.handler = handler;
 
     // Init
     setupConfig(conf._default);
@@ -727,22 +728,50 @@ var simpleviewer = new function () {
         if (keycodes.indexOf(e.which) != -1)
             e.preventDefault();
     }
-}
 
-function simpleviewerHandler (e, src) {
-    if (e.ctrlKey || e.altKey || e.shiftKey) return;
+    // Public shortcut handler
+    function handler () {
+        var src_arr = this.src,
+            cursor = 0;
 
-    // if clicked on the same node twice
-    if (simpleviewer.source_node === e.target && simpleviewer.shown()) {
-        simpleviewer.hide();
+        if (arguments.length === 1 && typeof arguments[0] === 'string')
+            src_arr = [arguments[0]];
+
+        if (arguments[0].data || arguments.length >= 2) {
+            var node = arguments[0].nodeName ? arguments[0] : this,
+                arg = arguments[0].data || arguments[1],
+                neighbor_nodes;
+
+            if (typeof arg === 'string')
+                neighbor_nodes = $(arg);
+            else if (typeof arg === 'object' || arg.length !== undefined)
+                neighbor_nodes = arg;
+
+            src_arr = [];
+
+            function get_src (node, arg) {
+                if (typeof arg === 'function')
+                    return arg.call(node, node);
+                else if (typeof arg === 'string')
+                    return node.getAttribute(arg);
+                else
+                    return node.src;
+            }
+
+            for (var i = 0; i < neighbor_nodes.length; i++) {log(node)
+                if (node === neighbor_nodes[i]) cursor = i;
+
+                var src = get_src(neighbor_nodes[i], arguments[2]);
+                src_arr.push(src);
+            };
+        }
+
+        self.update(src_arr, cursor);
+        if (!self.shown()) self.show();
+
+        return false;
     }
-    else {
-        simpleviewer.source_node = e.target;
-        simpleviewer.update(src || e.target.src);
-        simpleviewer.show();
-    }
 
-    return false;
 }
 
 $(document.head).append('<style type="text/css">' +
