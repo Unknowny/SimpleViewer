@@ -7,6 +7,7 @@ var simpleviewer = new function () {
         sshow_timeout = 2000, // slideshow interval in milliseconds
         sshow_pause = sshow_reset_time = false,
         loading_state = 1, // 1 - loading, 0 - loaded, -1 - error
+        video_re = /\.(webm|mp4)([?#].*)?$/i,
         real_size, // natural dimension of the current source content
         clientX, clientY; // mousetracking for scroll zooming
 
@@ -15,6 +16,12 @@ var simpleviewer = new function () {
         cursor: 0,
         current: function () {
             return this.all[this.cursor];
+        },
+        next: function () {
+            return this.all[this.cursor + 1] || false;
+        },
+        prev: function () {
+            return this.all[this.cursor - 1] || false;
         }
     }
 
@@ -95,7 +102,10 @@ var simpleviewer = new function () {
         if (in_slideshow && arguments[0])
             sshow_reset_time = true;
 
-        update(++sources.cursor);
+        sources.cursor++
+
+        preload(sources.next());
+        update(sources.cursor);
         updateArrows();
         return true;
     }
@@ -106,7 +116,10 @@ var simpleviewer = new function () {
         if (in_slideshow && arguments[0])
             sshow_reset_time = true;
 
-        update(--sources.cursor);
+        sources.cursor--
+
+        preload(sources.prev());
+        update(sources.cursor);
         updateArrows();
         return true;
     }
@@ -175,6 +188,13 @@ var simpleviewer = new function () {
 
         self.update(sources.current());
         if (shown) self.show();
+    }
+
+    function preload (url) {
+        if (video_re.test(url))
+            document.createElement('video').src = url;
+        else
+            (new Image()).src = url;
     }
 
     function widthToHeight (h) {
@@ -350,10 +370,15 @@ var simpleviewer = new function () {
 
         loading(1);
 
-        var url = sources.current();
-        updateArrows();
+        if (sources.all.length > 1) {
+            preload(sources.next());
+            preload(sources.prev());
+            updateArrows();
+        }
 
-        if (/\.(webm|mp4)([?#].*)?$/i.test(url)) {
+        var url = sources.current();
+
+        if (video_re.test(url)) {
             nodes.active = nodes.video;
             nodes.img.parent().hide();
         }
