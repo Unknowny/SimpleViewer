@@ -331,16 +331,16 @@ var simpleviewer = new function () {
         .on('keyup', keyupHandler).on('keydown', keydownHandler);
     }
 
-    function update (src_arr, cursor) {
+    function update (urls, cursor) {
         if (!nodes.root || !nodes.root.length) constructView();
 
-        if (src_arr === undefined) return;
+        if (urls === undefined) return;
 
-        if (typeof src_arr === 'number') {
-            sources.cursor = src_arr;
+        if (typeof urls === 'number') {
+            sources.cursor = urls;
         }
         else {
-            sources.all = [].concat(src_arr);
+            sources.all = [].concat(urls);
 
             if (!cursor || cursor < 0 || cursor >= sources.all.length)
                 cursor = 0;
@@ -350,10 +350,10 @@ var simpleviewer = new function () {
 
         loading(1);
 
-        var src = sources.current();
+        var url = sources.current();
         updateArrows();
 
-        if (/\.(webm|mp4)([?#].*)?$/i.test(src)) {
+        if (/\.(webm|mp4)([?#].*)?$/i.test(url)) {
             nodes.active = nodes.video;
             nodes.img.parent().hide();
         }
@@ -365,13 +365,13 @@ var simpleviewer = new function () {
         nodes.active
         .off('error', errorHandler)
         .attr('src', '')
-        .attr('src', src)
+        .attr('src', url)
         .on('error', errorHandler);
 
         real_size = getNaturalSize();
         adjustToWindow();
 
-        nodes.active.parent().attr('href', src);
+        nodes.active.parent().attr('href', url);
         nodes.active.parent().show();
     }
 
@@ -744,11 +744,11 @@ var simpleviewer = new function () {
 
     // Public shortcut handler
     function handler () {
-        var src_arr = this.src,
+        var urls = this.src,
             cursor = 0;
 
         if (arguments.length === 1 && typeof arguments[0] === 'string')
-            src_arr = [arguments[0]];
+            urls = [arguments[0]];
 
         if (arguments[0].data || arguments.length >= 2) {
             var node = arguments[0].nodeName ? arguments[0] : this,
@@ -760,9 +760,9 @@ var simpleviewer = new function () {
             else if (typeof arg === 'object' || arg.length !== undefined)
                 neighbor_nodes = arg;
 
-            src_arr = [];
+            urls = [];
 
-            function get_src (node, arg) {
+            function get_url (node, arg) {
                 if (typeof arg === 'function')
                     return arg.call(node, node);
                 else if (typeof arg === 'string')
@@ -774,12 +774,12 @@ var simpleviewer = new function () {
             for (var i = 0; i < neighbor_nodes.length; i++) {log(node)
                 if (node === neighbor_nodes[i]) cursor = i;
 
-                var src = get_src(neighbor_nodes[i], arguments[2]);
-                src_arr.push(src);
+                var url = get_url(neighbor_nodes[i], arguments[2]);
+                urls.push(url);
             };
         }
 
-        self.update(src_arr, cursor);
+        self.update(urls, cursor);
         self.show();
 
         return false;
