@@ -3,13 +3,16 @@ var simpleviewer = new function () {
     var self = this,
         win = $(window),
         button_just_moved = false, // for floating close button
+        in_fullscreen, in_drag, in_slideshow, stretching, shown,
         in_fullscreen = in_drag = in_slideshow = stretching = shown = false,
         sshow_timeout = 2000, // slideshow interval in milliseconds
+        sshow_pause, sshow_reset_time,
         sshow_pause = sshow_reset_time = false,
         loading_state = 1, // 1 - loading, 0 - loaded, -1 - error
         video_re = /\.(webm|mp4)([?#].*)?$/i,
         real_size, // natural dimension of the current source content
         clientX, clientY; // mousetracking for scroll zooming
+
 
     var sources = {
         all: [], // 1.jpg, 2.jpg, 3.png, ...
@@ -80,7 +83,7 @@ var simpleviewer = new function () {
             nodes.bg.show();
 
         if (nodes.active === nodes.video)
-            nodes.active[0].play();
+            nodes.video[0].play();
 
         shown = true;
     }
@@ -90,6 +93,8 @@ var simpleviewer = new function () {
 
         if (in_fullscreen) toggleFullscreen();
         if (in_slideshow) toggleSlideshow();
+
+        nodes.video[0].pause();
 
         nodes.root.hide();
 
@@ -105,6 +110,7 @@ var simpleviewer = new function () {
         sources.cursor++
 
         preload(sources.next());
+        nodes.video[0].pause();
         update(sources.cursor);
         updateArrows();
         return true;
@@ -119,6 +125,7 @@ var simpleviewer = new function () {
         sources.cursor--
 
         preload(sources.prev());
+        nodes.video[0].pause();
         update(sources.cursor);
         updateArrows();
         return true;
@@ -507,7 +514,8 @@ var simpleviewer = new function () {
 
         if (!in_slideshow) {
             in_slideshow = true;
-            var orig_timeout = prev_timeout = sshow_timeout,
+            var orig_timeout, prev_timeout,
+                orig_timeout = prev_timeout = sshow_timeout,
                 countdown = sshow_timeout - 1000;
 
             nodes.sshow_control.show();
@@ -604,7 +612,9 @@ var simpleviewer = new function () {
     }
 
     function containerPos (x, y) {
-        if (x === undefined) return nodes.container.position();
+        if (x === undefined)
+            return {top: nodes.container[0].offsetTop,
+                    left: nodes.container[0].offsetLeft};
 
         nodes.container.css({
             'left': x + 'px',
@@ -802,7 +812,7 @@ var simpleviewer = new function () {
 
             urls = [];
 
-            function get_url (node, arg) {
+            function getUrl (node, arg) {
                 if (typeof arg === 'function')
                     return arg.call(node, node);
                 else if (typeof arg === 'string')
@@ -811,10 +821,10 @@ var simpleviewer = new function () {
                     return node.src;
             }
 
-            for (var i = 0; i < neighbor_nodes.length; i++) {log(node)
+            for (var i = 0; i < neighbor_nodes.length; i++) {
                 if (node === neighbor_nodes[i]) cursor = i;
 
-                var url = get_url(neighbor_nodes[i], arguments[2]);
+                var url = getUrl(neighbor_nodes[i], arguments[2]);
                 urls.push(url);
             };
         }
